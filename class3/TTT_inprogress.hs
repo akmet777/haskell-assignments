@@ -147,7 +147,7 @@ diagonals board =
 -- 8. (3 points) Every line a player can win with: the rows, then the columns, then the diagonals.
 
 allLines :: [String] -> [String]
-allLines = undefined
+allLines board = board ++ columns board ++ diagonals board
 
 -- main = print (allLines boardA)           -- ["X-O","-X-","O--","X-O","-X-","O--","XX-","OXO"]
 -- main = print (length (allLines boardG))  -- 12
@@ -157,7 +157,7 @@ allLines = undefined
 --    Use higher-order functions.
 
 hasWon :: Char -> [String] -> Bool
-hasWon = undefined
+hasWon player board = any(\line -> all(== player)line) (allLines board)
 
 -- main = print (hasWon 'X' finished)  -- True
 -- main = print (hasWon 'O' finished)  -- False
@@ -167,7 +167,11 @@ hasWon = undefined
 -- 10. (3 points) Is the game over? (somebody has won, or there is no empty cell)
 
 gameOver :: [String] -> Bool
-gameOver = undefined
+gameOver board
+ | hasWon 'O' board = True
+ | hasWon 'X' board = True
+ | emptyCells board == [] = True
+ | otherwise = False
 
 -- main = print (gameOver finished)  -- True
 -- main = print (gameOver full)      -- True
@@ -175,9 +179,12 @@ gameOver = undefined
 
 ------------------------------------------------------------------------------------------------
 -- 11. (8 points) Put a mark on a cell (the cell is empty). The rest of the board does not change.
-
 place :: Char -> (Int, Int) -> [String] -> [String]
-place = undefined
+place mark (r,c) board =
+  let replaceAt i mark list = take i list ++ [mark] ++ drop (i+1) list
+      currentRow            = board !! r
+      newRow                = replaceAt c mark currentRow
+  in replaceAt r newRow board
 
 -- main = print (place 'X' (2,2) boardA)  -- ["X-O","-X-","O-X"]
 -- main = print (place 'O' (0,1) boardD)  -- ["-O-","-X-","---"]
@@ -187,7 +194,7 @@ place = undefined
 --     Top row first, each row from left to right.
 
 winningMoves :: Char -> [String] -> [(Int, Int)]
-winningMoves = undefined
+winningMoves mark board = [(x,y)| (x,y )<- emptyCells board, hasWon mark (place mark (x,y) board)] 
 
 -- main = print (winningMoves 'X' boardA)  -- [(2,2)]
 -- main = print (winningMoves 'X' boardC)  -- [(0,1),(1,0)]
@@ -198,17 +205,22 @@ winningMoves = undefined
 -- 13. (3 points) The name of a cell: (2,1) -> "B3".
 
 cellName :: (Int, Int) -> String
-cellName = undefined
+cellName (r,c) =
+  let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      letter = letters !! c
+  in letter : show (r+1)
+
+
 
 -- main = print (cellName (0,0))  -- "A1"
 -- main = print (cellName (2,1))  -- "B3"
 
 ------------------------------------------------------------------------------------------------
 -- 14. (6 points) The names of several cells, separated by ", ".
-
 cellList :: [(Int, Int)] -> String
-cellList = undefined
-
+cellList []     = ""
+cellList [c]    = cellName c
+cellList (c:cs) = cellName c ++ ", " ++ cellList cs
 -- main = print (cellList [(0,1),(1,0)])  -- "B1, A2"
 -- main = print (cellList [(2,2)])        -- "C3"
 -- main = print (cellList [])             -- ""
@@ -218,7 +230,7 @@ cellList = undefined
 --     for the next turn. Top row first, each row from left to right.
 
 forkMoves :: Char -> [String] -> [(Int, Int)]
-forkMoves = undefined
+forkMoves mark board = [(x,y)| (x,y) <- emptyCells board , 2<= length(winningMoves mark (place mark (x,y) board))] 
 
 -- main = print (forkMoves 'X' boardF)  -- [(0,2),(2,2)]
 -- main = print (forkMoves 'O' boardD)  -- []
@@ -236,7 +248,20 @@ forkMoves = undefined
 --     Always list ALL the cells, top row first, each row from left to right.
 
 advice :: Char -> [String] -> String
-advice = undefined
+advice starter board
+  | not (validPosition starter board) = "Invalid position"
+  | gameOver board                   = "Game over"
+  | not (null pWins)                 = [p] ++ " to move: win at " ++ cellList pWins
+  | length oppWins == 1              = [p] ++ " to move: must block " ++ cellList oppWins
+  | length oppWins > 1               = [p] ++ " to move: cannot stop " ++ [opp] ++ " (" ++ cellList oppWins ++ ")"
+  | not (null pForks)                = [p] ++ " to move: fork at " ++ cellList pForks
+  | otherwise                        = [p] ++ " to move: no threat"
+  where
+    p       = toMove starter board
+    opp     = other p
+    pWins   = winningMoves p board
+    oppWins = winningMoves opp board
+    pForks  = forkMoves p board
 
 -- main = print (advice 'X' boardA)    -- "X to move: win at C3"
 -- main = print (advice 'X' boardB)    -- "O to move: must block C1"
